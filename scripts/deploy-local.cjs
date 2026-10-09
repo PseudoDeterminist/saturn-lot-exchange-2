@@ -63,80 +63,6 @@ async function waitForReceipt(tx, label) {
   throw new Error(`Timed out waiting for ${label}: ${hash}`);
 }
 
-async function seedMarket(
-  exchange,
-  wetc,
-  lotToken,
-  marketId,
-  label
-) {
-  const maxApprove = ethers.MaxUint256;
-
-  await waitForReceipt(
-    await wetc.approve(exchange.target, maxApprove),
-    `${label} WETC approve`
-  );
-
-  await waitForReceipt(
-    await lotToken.approve(exchange.target, maxApprove),
-    `${label} lot token approve`
-  );
-
-  const sellSeeds = label === "TESTLOT"
-  ? [
-      { tick: 305, lots: 15 },
-      { tick: 306, lots: 25 },
-      { tick: 307, lots: 35 },
-      { tick: 308, lots: 45 },
-      { tick: 309, lots: 55 }
-    ]
-  : [
-      { tick: 121, lots: 60 },
-      { tick: 122, lots: 56 },
-      { tick: 123, lots: 52 },
-      { tick: 124, lots: 48 },
-      { tick: 125, lots: 44 }
-    ];
-
-const buySeeds = label === "TESTLOT"
-  ? [
-      { tick: 304, lots: 18 },
-      { tick: 303, lots: 28 },
-      { tick: 302, lots: 38 },
-      { tick: 301, lots: 48 },
-      { tick: 300, lots: 58 }
-    ]
-  : [
-      { tick: 120, lots: 60 },
-      { tick: 119, lots: 56 },
-      { tick: 118, lots: 52 },
-      { tick: 117, lots: 48 },
-      { tick: 116, lots: 44 }
-    ];
-
-  for (const order of sellSeeds) {
-    await waitForReceipt(
-      await exchange.placeSell(
-        marketId,
-        order.tick,
-        order.lots
-      ),
-      `${label} seed sell ${order.tick}`
-    );
-  }
-
-  for (const order of buySeeds) {
-    await waitForReceipt(
-      await exchange.placeBuy(
-        marketId,
-        order.tick,
-        order.lots
-      ),
-      `${label} seed buy ${order.tick}`
-    );
-  }
-}
-
 async function main() {
   const [deployer] = await ethers.getSigners();
 
@@ -227,63 +153,6 @@ async function main() {
 
   console.log("SaturnLotExchange:", exchange.target);
 
-  await waitForReceipt(
-    await exchange.activate(),
-    "activate SaturnLotExchange"
-  );
-
-  // ------------------------------------------------------------------
-  // Approve two markets
-  // ------------------------------------------------------------------
-
-  await waitForReceipt(
-    await exchange.approveMarket(strn10k.target),
-    "approve STRN10K market"
-  );
-
-  const strn10kMarketId =
-    await exchange.marketIdOf(strn10k.target);
-
-  console.log(
-    `Market ${strn10kMarketId}: STRN10K / WETC`
-  );
-
-  await waitForReceipt(
-    await exchange.approveMarket(testLot.target),
-    "approve TESTLOT market"
-  );
-
-  const testLotMarketId =
-    await exchange.marketIdOf(testLot.target);
-
-  console.log(
-    `Market ${testLotMarketId}: TESTLOT / WETC`
-  );
-
-  // ------------------------------------------------------------------
-  // Seed both order books
-  // ------------------------------------------------------------------
-
-  await seedMarket(
-    exchange,
-    wetc,
-    strn10k,
-    strn10kMarketId,
-    "STRN10K"
-  );
-
-  console.log("Seeded STRN10K / WETC book.");
-
-  await seedMarket(
-    exchange,
-    wetc,
-    testLot,
-    testLotMarketId,
-    "TESTLOT"
-  );
-
-  console.log("Seeded TESTLOT / WETC book.");
-
   // ------------------------------------------------------------------
   // Save local deployment data
   // ------------------------------------------------------------------
@@ -294,8 +163,8 @@ async function main() {
     TESTLOT_ADDRESS: testLot.target,
     SATURN_LOT_EXCHANGE_ADDRESS: exchange.target,
     EXCHANGE_DEPLOYMENT_BLOCK: deploymentReceipt.blockNumber,
-    STRN10K_MARKET_ID: strn10kMarketId.toString(),
-    TESTLOT_MARKET_ID: testLotMarketId.toString()
+    STRN10K_MARKET_ID: "",
+    TESTLOT_MARKET_ID: ""
   };
 
   updateEnvFile(ENV_PATH, addresses);
@@ -305,13 +174,8 @@ async function main() {
   console.log("");
   console.log("WETC:", wetc.target);
   console.log("Exchange:", exchange.target);
-  console.log(
-    `Market ${strn10kMarketId}: STRN10K / WETC`
-  );
-  console.log(
-    `Market ${testLotMarketId}: TESTLOT / WETC`
-  );
   console.log("");
+  console.log("Exchange deployed inactive with no approved markets.");
   console.log("Saved deployment values to .env");
 }
 
